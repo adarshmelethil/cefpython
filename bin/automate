@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (c) 2016 CEF Python, see the Authors file.
 # All rights reserved. Licensed under BSD 3-clause license.
 # Project website: https://github.com/cztomczak/cefpython
@@ -81,7 +82,7 @@ Options:
 
 """
 
-from common import *
+import _utils as u
 import os
 import sys
 import shlex
@@ -94,8 +95,6 @@ import shutil
 import multiprocessing
 from collections import OrderedDict
 from setuptools.msvc import msvc9_query_vcvarsall
-from setuptools.msvc import _msvc14_find_vcvarsall
-
 
 # Constants
 CEF_UPSTREAM_GIT_URL = "https://bitbucket.org/chromiumembedded/cef.git"
@@ -137,28 +136,6 @@ class Options(object):
     release_build = True
     build_type = ""  # Will be set according to "release_build" value
     cef_binary = ""
-
-
-def main():
-    """Main entry point."""
-
-    if len(sys.argv) <= 1:
-        print(__doc__)
-        sys.exit(1)
-
-    setup_options(docopt.docopt(__doc__))
-
-    if Options.build_cef:
-        if not sys.version_info[:2] == (2, 7):
-            print("ERROR: To build CEF from sources you need Python 2.7.")
-            print("       Upstream automate-git.py works only with that")
-            print("       version of python.")
-            sys.exit(1)
-        build_cef()
-    elif Options.prebuilt_cef:
-        prebuilt_cef()
-    elif Options.make_distrib:
-        run_make_distrib()
 
 
 def setup_options(docopt_args):
@@ -563,7 +540,7 @@ def build_wrapper_library_windows(runtime_library, msvs, vcvars):
         if msvs == "2010":
             # When Using WinSDK 7.1 vcvarsall.bat doesn't work. Use
             # setuptools.msvc.msvc9_query_vcvarsall to query env vars.
-            env.update(_msvc14_find_vcvarsall(10.0, arch=VS_PLATFORM_ARG))
+            env.update(msvc9_query_vcvarsall(10.0, arch=VS_PLATFORM_ARG))
             # On Python 2.7 env values returned by both distutils
             # and setuptools are unicode, but Python expects env
             # dict values as strings.
@@ -749,7 +726,7 @@ def fix_cef_include_files():
     """Fixes to CEF include header files for eg. VS2008 on Windows."""
     # TODO: This was fixed in upstream CEF, remove this code during
     #       next CEF update on Windows.
-    if platform.system() == "Windows" and get_msvs_for_python() == "2008":
+    if platform.system() == "Windows" and utils.get_msvs_for_python() == "2008":
         print("[automate.py] Fixing CEF include/ files")
         # cef_types_wrappers.h
         cef_types_wrappers = os.path.join(
@@ -1171,10 +1148,10 @@ def onerror(func, path, _):
 
 def get_prebuilt_name(header_file=""):
     if header_file:
-        version = get_version_from_file(header_file)
+        version = u.get_version_from_file(header_file)
     else:
-        version = get_cefpython_version()
-    postfix2 = OS_POSTFIX2
+        version = u.get_cefpython_version()
+    postfix2 = u.OS_POSTFIX2
     if Options.x86:
         postfix2 = get_os_postfix2_for_arch("32bit")
     name = "cef%s_%s_%s" % (
@@ -1183,6 +1160,28 @@ def get_prebuilt_name(header_file=""):
         postfix2,
     )
     return name
+
+
+def main():
+    """Main entry point."""
+
+    if len(sys.argv) <= 1:
+        print(__doc__)
+        sys.exit(1)
+
+    setup_options(docopt.docopt(__doc__))
+
+    if Options.build_cef:
+        if not sys.version_info[:2] == (2, 7):
+            print("ERROR: To build CEF from sources you need Python 2.7.")
+            print("       Upstream automate-git.py works only with that")
+            print("       version of python.")
+            sys.exit(1)
+        build_cef()
+    elif Options.prebuilt_cef:
+        prebuilt_cef()
+    elif Options.make_distrib:
+        run_make_distrib()
 
 
 if __name__ == "__main__":
